@@ -5,7 +5,6 @@ type Tab = 'main' | 'timeline' | 'settings'
 interface NavigationProps {
   activeTab: Tab
   onTabChange: (tab: Tab) => void
-  onEventPress: () => void
 }
 
 const tabs: { id: Tab; label: string }[] = [
@@ -14,7 +13,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'settings', label: '설정' },
 ]
 
-export default function Navigation({ activeTab, onTabChange, onEventPress }: NavigationProps) {
+export default function Navigation({ activeTab, onTabChange }: NavigationProps) {
   return (
     <nav
       style={{
@@ -74,7 +73,7 @@ export default function Navigation({ activeTab, onTabChange, onEventPress }: Nav
               )}
               <span
                 style={{
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: isActive ? 700 : 500,
                   color: isActive ? '#FFFFFF' : '#888',
                   transition: 'color 0.2s',
@@ -85,38 +84,6 @@ export default function Navigation({ activeTab, onTabChange, onEventPress }: Nav
             </button>
           )
         })}
-
-        {/* 이벤트 빠른 기록 */}
-        <button
-          onClick={onEventPress}
-          style={{
-            flex: 1,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          <motion.div
-            whileTap={{ scale: 0.85 }}
-            style={{
-              width: 36,
-              height: 36,
-              backgroundColor: '#fff',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </motion.div>
-        </button>
       </div>
     </nav>
   )

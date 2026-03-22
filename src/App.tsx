@@ -4,13 +4,11 @@ import MainScreen from './components/MainScreen'
 import TimelineScreen from './components/TimelineScreen'
 import SettingsScreen from './components/SettingsScreen'
 import Navigation from './components/Navigation'
-import EventQuickLog from './components/EventQuickLog'
 
 type Tab = 'main' | 'timeline' | 'settings'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('main')
-  const [showEventSheet, setShowEventSheet] = useState(false)
 
   return (
     <div className="h-full relative max-w-[430px] mx-auto">
@@ -32,12 +30,6 @@ export default function App() {
       <Navigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onEventPress={() => setShowEventSheet(true)}
-      />
-
-      <EventQuickLog
-        isOpen={showEventSheet}
-        onClose={() => setShowEventSheet(false)}
       />
     </div>
   )

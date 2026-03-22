@@ -103,7 +103,7 @@ export default function SettingsScreen() {
       {/* 활동 관리 */}
       <div className="px-7 mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[13px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
+          <h3 className="text-[15px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
             활동
           </h3>
           <button
@@ -164,13 +164,13 @@ export default function SettingsScreen() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setEditingActivityId(activity.id)}
-                        className="text-[14px] text-[var(--color-text-secondary)] px-3 py-2 rounded-xl active:bg-[var(--color-surface-2)] transition-colors"
+                        className="text-[16px] text-[var(--color-text-secondary)] px-4 py-2.5 rounded-xl active:bg-[var(--color-surface-2)] transition-colors"
                       >
                         편집
                       </button>
                       <button
                         onClick={() => deleteActivity(activity.id)}
-                        className="text-[14px] text-red-400/70 px-3 py-2 rounded-xl active:bg-red-500/10 transition-colors"
+                        className="text-[16px] text-red-400/70 px-4 py-2.5 rounded-xl active:bg-red-500/10 transition-colors"
                       >
                         삭제
                       </button>
@@ -183,7 +183,7 @@ export default function SettingsScreen() {
 
           {activities.length === 0 && !showActivityForm && (
             <div className="text-center py-10">
-              <p className="text-[var(--color-text-tertiary)] text-[15px] mb-1">
+              <p className="text-[var(--color-text-tertiary)] text-[17px] mb-1">
                 아직 활동이 없어요
               </p>
               <p className="text-[var(--color-text-tertiary)] text-[13px]">
@@ -197,7 +197,7 @@ export default function SettingsScreen() {
       {/* 이벤트 관리 */}
       <div className="px-7 mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[13px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
+          <h3 className="text-[15px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
             이벤트
           </h3>
           <button
@@ -258,13 +258,13 @@ export default function SettingsScreen() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setEditingEventId(eventType.id)}
-                        className="text-[14px] text-[var(--color-text-secondary)] px-3 py-2 rounded-xl active:bg-[var(--color-surface-2)] transition-colors"
+                        className="text-[16px] text-[var(--color-text-secondary)] px-4 py-2.5 rounded-xl active:bg-[var(--color-surface-2)] transition-colors"
                       >
                         편집
                       </button>
                       <button
                         onClick={() => deleteEventType(eventType.id)}
-                        className="text-[14px] text-red-400/70 px-3 py-2 rounded-xl active:bg-red-500/10 transition-colors"
+                        className="text-[16px] text-red-400/70 px-4 py-2.5 rounded-xl active:bg-red-500/10 transition-colors"
                       >
                         삭제
                       </button>
@@ -277,7 +277,7 @@ export default function SettingsScreen() {
 
           {eventTypes.length === 0 && !showEventForm && (
             <div className="text-center py-10">
-              <p className="text-[var(--color-text-tertiary)] text-[15px] mb-1">
+              <p className="text-[var(--color-text-tertiary)] text-[17px] mb-1">
                 아직 이벤트가 없어요
               </p>
               <p className="text-[var(--color-text-tertiary)] text-[13px]">

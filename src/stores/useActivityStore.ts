@@ -63,9 +63,13 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     const now = Date.now()
     const { currentLog } = get()
 
-    // 현재 진행중인 로그 종료
+    // 현재 진행중인 로그 종료 (10초 미만이면 삭제 — 빠른 탭 스킵)
     if (currentLog?.id) {
-      await db.activityLogs.update(currentLog.id, { endedAt: now })
+      if (now - currentLog.startedAt < 10000) {
+        await db.activityLogs.delete(currentLog.id)
+      } else {
+        await db.activityLogs.update(currentLog.id, { endedAt: now })
+      }
     }
 
     // 새 로그 시작
