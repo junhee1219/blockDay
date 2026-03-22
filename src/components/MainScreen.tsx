@@ -51,7 +51,8 @@ export default function MainScreen() {
     return activities[(currentIndex + 1) % activities.length]
   }, [activities, currentActivity])
 
-  const { formatted } = useTimer(currentLog?.startedAt ?? null)
+  const { elapsed, formatted } = useTimer(currentLog?.startedAt ?? null)
+  const isLocked = elapsed >= 10000 // 10초 넘으면 기록 확정
 
   const handleTap = useCallback(() => {
     if (activities.length === 0) return
@@ -190,6 +191,43 @@ export default function MainScreen() {
               >
                 {formatted}
               </motion.p>
+
+              {/* 기록 상태 표시 */}
+              <div className="mt-6 flex flex-col items-center gap-2">
+                <div className="w-32 h-[3px] rounded-full bg-white/10 overflow-hidden">
+                  <motion.div
+                    key={currentLog?.startedAt}
+                    initial={{ width: '0%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 10, ease: 'linear' }}
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.5)' }}
+                  />
+                </div>
+                <AnimatePresence mode="wait">
+                  {isLocked ? (
+                    <motion.p
+                      key="locked"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-white/50 text-[14px] font-medium"
+                    >
+                      기록 중
+                    </motion.p>
+                  ) : (
+                    <motion.p
+                      key="skippable"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 0.6, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-white/30 text-[14px] font-medium"
+                    >
+                      탭하면 건너뜀
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
             </>
           ) : (
             <>
@@ -216,17 +254,18 @@ export default function MainScreen() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...spring, delay: 0.3 }}
-            className="absolute bottom-36 left-0 right-0 flex justify-center gap-3 px-6 z-20"
+            className="absolute bottom-36 left-0 right-0 overflow-x-auto flex gap-3 px-6 z-20"
+            style={{ WebkitOverflowScrolling: 'touch', justifyContent: eventTypes.length <= 3 ? 'center' : 'flex-start', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             {eventTypes.map((et) => (
               <motion.button
                 key={et.id}
                 whileTap={{ scale: 0.85 }}
-                onClick={(e) => handleEventLog(e, et.id)}
-                onTouchEnd={(e) => {
-                  e.stopPropagation()
-                }}
-                className="flex items-center gap-2.5 px-6 py-3.5 rounded-full backdrop-blur-md"
+                onClick={(e) => { e.stopPropagation(); handleEventLog(e, et.id) }}
+                className="flex items-center gap-2.5 px-6 py-3.5 rounded-full backdrop-blur-md shrink-0"
                 style={{
                   backgroundColor:
                     loggedEventId === et.id

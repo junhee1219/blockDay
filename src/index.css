@@ -44,3 +44,8 @@ body {
   width: 100%;
   position: relative;
 }
+
+/* 스크롤바 숨기기 */
+::-webkit-scrollbar {
+  display: none;
+}
