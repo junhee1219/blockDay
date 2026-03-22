@@ -10,6 +10,8 @@ interface EventState {
   updateEventType: (id: string, name: string, color: string) => Promise<void>
   deleteEventType: (id: string) => Promise<void>
   logEvent: (eventTypeId: string) => Promise<void>
+  updateEventLog: (id: number, data: { occurredAt?: number; memo?: string }) => Promise<void>
+  deleteEventLog: (id: number) => Promise<void>
 }
 
 export const useEventStore = create<EventState>((set, get) => ({
@@ -47,5 +49,13 @@ export const useEventStore = create<EventState>((set, get) => ({
       occurredAt: Date.now(),
     }
     await db.eventLogs.add(log)
+  },
+
+  updateEventLog: async (id, data) => {
+    await db.eventLogs.update(id, data)
+  },
+
+  deleteEventLog: async (id) => {
+    await db.eventLogs.delete(id)
   },
 }))

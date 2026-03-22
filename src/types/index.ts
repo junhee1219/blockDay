@@ -19,10 +19,12 @@ export interface ActivityLog {
   activityId: string
   startedAt: number
   endedAt?: number
+  memo?: string
 }
 
 export interface EventLog {
   id?: number
   eventTypeId: string
   occurredAt: number
+  memo?: string
 }

@@ -15,4 +15,12 @@ db.version(1).stores({
   eventLogs: '++id, eventTypeId, occurredAt',
 })
 
+// v2: memo 필드 추가 (인덱스 변경 없음, 스키마는 동일)
+db.version(2).stores({
+  activities: 'id, order, createdAt',
+  eventTypes: 'id, createdAt',
+  activityLogs: '++id, activityId, startedAt, endedAt',
+  eventLogs: '++id, eventTypeId, occurredAt',
+})
+
 export { db }

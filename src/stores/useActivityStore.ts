@@ -17,6 +17,9 @@ interface ActivityState {
   stopTracking: () => Promise<void>
   loadCurrentLog: () => Promise<void>
   syncOnResume: () => Promise<void>
+  updateCurrentMemo: (memo: string) => Promise<void>
+  updateLog: (id: number, data: { startedAt?: number; endedAt?: number; memo?: string }) => Promise<void>
+  deleteLog: (id: number) => Promise<void>
 }
 
 export const useActivityStore = create<ActivityState>((set, get) => ({
@@ -100,6 +103,26 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
 
     if (lastLog && !lastLog.endedAt) {
       set({ currentLog: lastLog, isTracking: true })
+    }
+  },
+
+  updateCurrentMemo: async (memo) => {
+    const { currentLog } = get()
+    if (currentLog?.id) {
+      await db.activityLogs.update(currentLog.id, { memo })
+      set({ currentLog: { ...currentLog, memo } })
+    }
+  },
+
+  updateLog: async (id, data) => {
+    await db.activityLogs.update(id, data)
+  },
+
+  deleteLog: async (id) => {
+    const { currentLog } = get()
+    await db.activityLogs.delete(id)
+    if (currentLog?.id === id) {
+      set({ currentLog: null, isTracking: false })
     }
   },
 

@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useActivityStore } from '../stores/useActivityStore'
 import { useEventStore } from '../stores/useEventStore'
 import { useDateLogs } from '../hooks/useDateLogs'
+import EditLogSheet from './EditLogSheet'
+import type { ActivityLog, EventLog } from '../types'
 
 function formatHour(hour: number): string {
   const ampm = hour < 12 ? '오전' : '오후'
@@ -59,13 +61,17 @@ function formatDateLabel(date: Date): string {
 }
 
 export default function TimelineScreen() {
-  const { activities } = useActivityStore()
-  const { eventTypes } = useEventStore()
+  const { activities, updateLog, deleteLog } = useActivityStore()
+  const { eventTypes, updateEventLog, deleteEventLog } = useEventStore()
 
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const isToday = selectedDate.toDateString() === new Date().toDateString()
 
-  const { activityLogs, eventLogs } = useDateLogs(selectedDate)
+  const { activityLogs, eventLogs, reload } = useDateLogs(selectedDate)
+
+  // 편집 상태
+  const [editingActivityLog, setEditingActivityLog] = useState<ActivityLog | null>(null)
+  const [editingEventLog, setEditingEventLog] = useState<EventLog | null>(null)
 
   const goBack = () => {
     setSelectedDate((d) => {
@@ -86,16 +92,42 @@ export default function TimelineScreen() {
 
   const goToday = () => setSelectedDate(new Date())
 
+  const handleSaveActivityLog = useCallback(async (data: { startedAt: number; endedAt?: number; memo?: string }) => {
+    if (editingActivityLog?.id) {
+      await updateLog(editingActivityLog.id, data)
+      reload()
+    }
+  }, [editingActivityLog, updateLog, reload])
+
+  const handleDeleteActivityLog = useCallback(async () => {
+    if (editingActivityLog?.id) {
+      await deleteLog(editingActivityLog.id)
+      reload()
+    }
+  }, [editingActivityLog, deleteLog, reload])
+
+  const handleSaveEventLog = useCallback(async (data: { occurredAt: number; memo?: string }) => {
+    if (editingEventLog?.id) {
+      await updateEventLog(editingEventLog.id, data)
+      reload()
+    }
+  }, [editingEventLog, updateEventLog, reload])
+
+  const handleDeleteEventLog = useCallback(async () => {
+    if (editingEventLog?.id) {
+      await deleteEventLog(editingEventLog.id)
+      reload()
+    }
+  }, [editingEventLog, deleteEventLog, reload])
+
   const hours = useMemo(() => {
     if (isToday) {
       const now = new Date()
       return Array.from({ length: now.getHours() + 1 }, (_, i) => i)
     }
-    // 과거 날짜면 24시간 전체 (기록이 있는 시간대만)
     return Array.from({ length: 24 }, (_, i) => i)
   }, [isToday, selectedDate.toDateString()])
 
-  // 활동별 총 시간 계산
   const activitySummary = useMemo(() => {
     const summary = new Map<string, number>()
     const now = Date.now()
@@ -119,7 +151,6 @@ export default function TimelineScreen() {
     [activitySummary],
   )
 
-  // 이벤트별 횟수 계산
   const eventSummary = useMemo(() => {
     const counts = new Map<string, number>()
 
@@ -136,44 +167,53 @@ export default function TimelineScreen() {
       .sort((a, b) => b.count - a.count)
   }, [eventTypes, eventLogs])
 
+  // 날짜 네비게이션 컴포넌트
+  const DateNav = () => (
+    <div className="px-6 pt-14 pb-4">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={goBack}
+          className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <div className="text-center">
+          <motion.h2
+            key={selectedDate.toDateString()}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[28px] font-extrabold tracking-tight"
+          >
+            {formatDateLabel(selectedDate)}
+          </motion.h2>
+        </div>
+        <button
+          onClick={goForward}
+          disabled={isToday}
+          className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform disabled:opacity-20"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      </div>
+      {!isToday && (
+        <button
+          onClick={goToday}
+          className="mt-3 mx-auto block text-[14px] text-[var(--color-text-secondary)] font-semibold px-4 py-1.5 rounded-full bg-[var(--color-surface)] active:scale-[0.95] transition-transform"
+        >
+          오늘로 돌아가기
+        </button>
+      )}
+    </div>
+  )
+
   if (activityLogs.length === 0 && eventLogs.length === 0) {
     return (
       <div className="flex flex-col h-full">
-        {/* 날짜 네비게이션 — 빈 화면에서도 표시 */}
-        <div className="px-6 pt-14 pb-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={goBack}
-              className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <div className="text-center">
-              <h2 className="text-[28px] font-extrabold tracking-tight">
-                {formatDateLabel(selectedDate)}
-              </h2>
-            </div>
-            <button
-              onClick={goForward}
-              disabled={isToday}
-              className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform disabled:opacity-20"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
-          {!isToday && (
-            <button
-              onClick={goToday}
-              className="mt-3 mx-auto block text-[14px] text-[var(--color-text-secondary)] font-semibold px-4 py-1.5 rounded-full bg-[var(--color-surface)] active:scale-[0.95] transition-transform"
-            >
-              오늘로 돌아가기
-            </button>
-          )}
-        </div>
+        <DateNav />
         <div className="flex-1 flex items-center justify-center px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -190,111 +230,49 @@ export default function TimelineScreen() {
   }
 
   return (
-    <div className="h-full overflow-y-auto pb-24">
-      {/* 날짜 네비게이션 + 요약 헤더 */}
-      <div className="px-6 pt-14 pb-6">
-        <div className="flex items-center justify-between mb-2">
-          <button
-            onClick={goBack}
-            className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <div className="text-center">
-            <motion.h2
-              key={selectedDate.toDateString()}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-[28px] font-extrabold tracking-tight"
-            >
-              {formatDateLabel(selectedDate)}
-            </motion.h2>
-          </div>
-          <button
-            onClick={goForward}
-            disabled={isToday}
-            className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform disabled:opacity-20"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
-        {!isToday && (
-          <button
-            onClick={goToday}
-            className="mx-auto block text-[14px] text-[var(--color-text-secondary)] font-semibold px-4 py-1.5 rounded-full bg-[var(--color-surface)] active:scale-[0.95] transition-transform mb-2"
-          >
-            오늘로 돌아가기
-          </button>
-        )}
-        <p className="text-[var(--color-text-secondary)] text-[18px] text-center">
-          총 {formatDuration(totalTracked)} 기록됨
-        </p>
-      </div>
+    <>
+      <div className="h-full overflow-y-auto pb-24">
+        <DateNav />
 
-      {/* 활동 요약 바 */}
-      {totalTracked > 0 && (
-        <div className="px-6 mb-8">
-          <div className="flex rounded-2xl overflow-hidden h-14">
-            {activitySummary.map((s, i) => (
-              <motion.div
-                key={s.activity.id}
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: i * 0.1, type: 'spring', damping: 20 }}
-                className="h-full origin-left flex items-center justify-center"
-                style={{
-                  backgroundColor: s.activity.color,
-                  width: `${(s.duration / totalTracked) * 100}%`,
-                }}
-              >
-                {s.duration / totalTracked > 0.15 && (
-                  <span className="text-white text-[15px] font-bold truncate px-2">
-                    {s.activity.name}
-                  </span>
-                )}
-              </motion.div>
-            ))}
-          </div>
+        {/* 총 기록 시간 */}
+        <div className="px-6 pb-6">
+          <p className="text-[var(--color-text-secondary)] text-[18px] text-center">
+            총 {formatDuration(totalTracked)} 기록됨
+          </p>
         </div>
-      )}
 
-      {/* 활동별 상세 */}
-      <div className="px-6 space-y-3 mb-8">
-        {activitySummary.map((s, i) => (
-          <motion.div
-            key={s.activity.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="flex items-center justify-between bg-[var(--color-surface)] rounded-2xl px-6 py-5"
-          >
-            <div className="flex items-center gap-4">
-              <div
-                className="w-5 h-5 rounded-full"
-                style={{ backgroundColor: s.activity.color }}
-              />
-              <span className="text-[19px] font-bold">{s.activity.name}</span>
+        {/* 활동 요약 바 */}
+        {totalTracked > 0 && (
+          <div className="px-6 mb-8">
+            <div className="flex rounded-2xl overflow-hidden h-14">
+              {activitySummary.map((s, i) => (
+                <motion.div
+                  key={s.activity.id}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: i * 0.1, type: 'spring', damping: 20 }}
+                  className="h-full origin-left flex items-center justify-center"
+                  style={{
+                    backgroundColor: s.activity.color,
+                    width: `${(s.duration / totalTracked) * 100}%`,
+                  }}
+                >
+                  {s.duration / totalTracked > 0.15 && (
+                    <span className="text-white text-[15px] font-bold truncate px-2">
+                      {s.activity.name}
+                    </span>
+                  )}
+                </motion.div>
+              ))}
             </div>
-            <span className="text-[var(--color-text-secondary)] text-[18px] font-semibold tabular-nums">
-              {formatDuration(s.duration)}
-            </span>
-          </motion.div>
-        ))}
-      </div>
+          </div>
+        )}
 
-      {/* 이벤트 요약 */}
-      {eventSummary.length > 0 && (
+        {/* 활동별 상세 */}
         <div className="px-6 space-y-3 mb-8">
-          <h3 className="text-[17px] font-bold text-[var(--color-text-secondary)] mb-5">
-            이벤트 요약
-          </h3>
-          {eventSummary.map((s, i) => (
+          {activitySummary.map((s, i) => (
             <motion.div
-              key={s.eventType.id}
+              key={s.activity.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
@@ -303,112 +281,207 @@ export default function TimelineScreen() {
               <div className="flex items-center gap-4">
                 <div
                   className="w-5 h-5 rounded-full"
-                  style={{ backgroundColor: s.eventType.color }}
+                  style={{ backgroundColor: s.activity.color }}
                 />
-                <span className="text-[19px] font-bold">{s.eventType.name}</span>
+                <span className="text-[19px] font-bold">{s.activity.name}</span>
               </div>
               <span className="text-[var(--color-text-secondary)] text-[18px] font-semibold tabular-nums">
-                {s.count}회
+                {formatDuration(s.duration)}
               </span>
             </motion.div>
           ))}
         </div>
-      )}
 
-      {/* 타임라인 */}
-      <div className="px-6">
-        <h3 className="text-[17px] font-bold text-[var(--color-text-secondary)] mb-5">
-          타임라인
-        </h3>
-        <div className="relative">
-          <div className="space-y-0">
-            {hours.map((hour) => {
-              const dayBase = new Date(selectedDate)
-              dayBase.setHours(0, 0, 0, 0)
-              const hourStart = new Date(dayBase)
-              hourStart.setHours(hour)
-              const hourEnd = new Date(dayBase)
-              hourEnd.setHours(hour + 1)
+        {/* 이벤트 요약 */}
+        {eventSummary.length > 0 && (
+          <div className="px-6 space-y-3 mb-8">
+            <h3 className="text-[17px] font-bold text-[var(--color-text-secondary)] mb-5">
+              이벤트 요약
+            </h3>
+            {eventSummary.map((s, i) => (
+              <motion.div
+                key={s.eventType.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="flex items-center justify-between bg-[var(--color-surface)] rounded-2xl px-6 py-5"
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-5 h-5 rounded-full"
+                    style={{ backgroundColor: s.eventType.color }}
+                  />
+                  <span className="text-[19px] font-bold">{s.eventType.name}</span>
+                </div>
+                <span className="text-[var(--color-text-secondary)] text-[18px] font-semibold tabular-nums">
+                  {s.count}회
+                </span>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
-              const hourLogs = activityLogs.filter((log) => {
-                const end = log.endedAt ?? Date.now()
-                return log.startedAt < hourEnd.getTime() && end > hourStart.getTime()
-              })
+        {/* 타임라인 */}
+        <div className="px-6">
+          <h3 className="text-[17px] font-bold text-[var(--color-text-secondary)] mb-5">
+            타임라인
+          </h3>
+          <p className="text-[13px] text-[var(--color-text-tertiary)] mb-4 -mt-3">
+            탭하여 수정
+          </p>
+          <div className="relative">
+            <div className="space-y-0">
+              {hours.map((hour) => {
+                const dayBase = new Date(selectedDate)
+                dayBase.setHours(0, 0, 0, 0)
+                const hourStart = new Date(dayBase)
+                hourStart.setHours(hour)
+                const hourEnd = new Date(dayBase)
+                hourEnd.setHours(hour + 1)
 
-              const hourEvents = eventLogs.filter((log) => {
+                const hourLogs = activityLogs.filter((log) => {
+                  const end = log.endedAt ?? Date.now()
+                  return log.startedAt < hourEnd.getTime() && end > hourStart.getTime()
+                })
+
+                const hourEvents = eventLogs.filter((log) => {
+                  return (
+                    log.occurredAt >= hourStart.getTime() &&
+                    log.occurredAt < hourEnd.getTime()
+                  )
+                })
+
+                if (!isToday && hourLogs.length === 0 && hourEvents.length === 0) return null
+
                 return (
-                  log.occurredAt >= hourStart.getTime() &&
-                  log.occurredAt < hourEnd.getTime()
-                )
-              })
-
-              if (!isToday && hourLogs.length === 0 && hourEvents.length === 0) return null
-
-              return (
-                <div key={hour} className="flex gap-4 min-h-[52px]">
-                  <div className="w-16 text-[15px] text-[var(--color-text-tertiary)] pt-1 shrink-0">
-                    {formatHour(hour)}
-                  </div>
-                  <div className="flex-1 border-l border-[var(--color-border)] pl-4 pb-4">
-                    <div className="space-y-1.5">
-                      {hourLogs.map((log) => {
-                        const activity = activities.find(
-                          (a) => a.id === log.activityId,
-                        )
-                        if (!activity) return null
-                        return (
-                          <div
-                            key={log.id}
-                            className="rounded-2xl px-5 py-3.5 text-white"
-                            style={{ backgroundColor: activity.color }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-[17px] font-bold">
-                                {activity.name}
+                  <div key={hour} className="flex gap-4 min-h-[52px]">
+                    <div className="w-16 text-[15px] text-[var(--color-text-tertiary)] pt-1 shrink-0">
+                      {formatHour(hour)}
+                    </div>
+                    <div className="flex-1 border-l border-[var(--color-border)] pl-4 pb-4">
+                      <div className="space-y-1.5">
+                        {hourLogs.map((log) => {
+                          const activity = activities.find(
+                            (a) => a.id === log.activityId,
+                          )
+                          if (!activity) return null
+                          return (
+                            <motion.button
+                              key={log.id}
+                              whileTap={{ scale: 0.97 }}
+                              onClick={() => setEditingActivityLog(log)}
+                              className="w-full rounded-2xl px-5 py-3.5 text-white text-left"
+                              style={{ backgroundColor: activity.color }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-[17px] font-bold">
+                                  {activity.name}
+                                </span>
+                                <span className="text-[15px] text-white/70 font-semibold">
+                                  {formatLogDuration(log.startedAt, log.endedAt)}
+                                </span>
+                              </div>
+                              <div className="text-[13px] text-white/50 mt-1 flex items-center gap-1">
+                                <span>
+                                  {formatTime(log.startedAt)}
+                                  {' → '}
+                                  {log.endedAt ? formatTime(log.endedAt) : '진행 중'}
+                                </span>
+                                {log.memo && (
+                                  <span className="ml-2 text-white/60 flex items-center gap-1">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                      <polyline points="14 2 14 8 20 8" />
+                                      <line x1="16" y1="13" x2="8" y2="13" />
+                                      <line x1="16" y1="17" x2="8" y2="17" />
+                                    </svg>
+                                    {log.memo.length > 10 ? log.memo.slice(0, 10) + '...' : log.memo}
+                                  </span>
+                                )}
+                              </div>
+                            </motion.button>
+                          )
+                        })}
+                        {hourEvents.map((log) => {
+                          const eventType = eventTypes.find(
+                            (e) => e.id === log.eventTypeId,
+                          )
+                          if (!eventType) return null
+                          return (
+                            <motion.button
+                              key={log.id}
+                              whileTap={{ scale: 0.97 }}
+                              onClick={() => setEditingEventLog(log)}
+                              className="flex items-center gap-3 py-2 w-full text-left"
+                            >
+                              <div
+                                className="w-3 h-3 rounded-full shrink-0"
+                                style={{ backgroundColor: eventType.color }}
+                              />
+                              <span className="text-[16px] text-[var(--color-text-secondary)] font-semibold">
+                                {eventType.name}
                               </span>
-                              <span className="text-[15px] text-white/70 font-semibold">
-                                {formatLogDuration(log.startedAt, log.endedAt)}
+                              <span className="text-[14px] text-[var(--color-text-tertiary)]">
+                                {formatTime(log.occurredAt)}
                               </span>
-                            </div>
-                            <div className="text-[13px] text-white/50 mt-1">
-                              {formatTime(log.startedAt)}
-                              {' → '}
-                              {log.endedAt ? formatTime(log.endedAt) : '진행 중'}
-                            </div>
-                          </div>
-                        )
-                      })}
-                      {hourEvents.map((log) => {
-                        const eventType = eventTypes.find(
-                          (e) => e.id === log.eventTypeId,
-                        )
-                        if (!eventType) return null
-                        return (
-                          <div
-                            key={log.id}
-                            className="flex items-center gap-3 py-2"
-                          >
-                            <div
-                              className="w-3 h-3 rounded-full shrink-0"
-                              style={{ backgroundColor: eventType.color }}
-                            />
-                            <span className="text-[16px] text-[var(--color-text-secondary)] font-semibold">
-                              {eventType.name}
-                            </span>
-                            <span className="text-[14px] text-[var(--color-text-tertiary)]">
-                              {formatTime(log.occurredAt)}
-                            </span>
-                          </div>
-                        )
-                      })}
+                              {log.memo && (
+                                <span className="text-[13px] text-[var(--color-text-tertiary)] ml-auto flex items-center gap-1">
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                  </svg>
+                                  메모
+                                </span>
+                              )}
+                            </motion.button>
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* 편집 바텀시트 */}
+      <AnimatePresence>
+        {editingActivityLog && (() => {
+          const activity = activities.find(a => a.id === editingActivityLog.activityId)
+          if (!activity) return null
+          return (
+            <EditLogSheet
+              type="activity"
+              log={editingActivityLog}
+              name={activity.name}
+              color={activity.color}
+              onSave={handleSaveActivityLog}
+              onDelete={handleDeleteActivityLog}
+              onClose={() => setEditingActivityLog(null)}
+            />
+          )
+        })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingEventLog && (() => {
+          const eventType = eventTypes.find(e => e.id === editingEventLog.eventTypeId)
+          if (!eventType) return null
+          return (
+            <EditLogSheet
+              type="event"
+              log={editingEventLog}
+              name={eventType.name}
+              color={eventType.color}
+              onSave={handleSaveEventLog}
+              onDelete={handleDeleteEventLog}
+              onClose={() => setEditingEventLog(null)}
+            />
+          )
+        })()}
+      </AnimatePresence>
+    </>
   )
 }
