@@ -4,6 +4,7 @@ import MainScreen from './components/MainScreen'
 import TimelineScreen from './components/TimelineScreen'
 import SettingsScreen from './components/SettingsScreen'
 import Navigation from './components/Navigation'
+import InstallBanner from './components/InstallBanner'
 
 type Tab = 'main' | 'timeline' | 'settings'
 
@@ -31,6 +32,8 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
+
+      <InstallBanner />
     </div>
   )
 }
