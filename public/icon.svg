@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <!-- Subtle shadow for depth -->
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="96" fill="#0A0A0A"/>
+
+  <!-- Decorative subtle grid lines -->
+  <g opacity="0.06" stroke="#fff" stroke-width="1">
+    <line x1="80" y1="80" x2="80" y2="432"/>
+    <line x1="160" y1="80" x2="160" y2="432"/>
+    <line x1="240" y1="80" x2="240" y2="432"/>
+    <line x1="320" y1="80" x2="320" y2="432"/>
+    <line x1="400" y1="80" x2="400" y2="432"/>
+  </g>
+
+  <!-- Time blocks - stacked colored bars with varying widths -->
+  <!-- Block 1: Purple - longest (work/focus) -->
+  <rect x="72" y="72" width="368" height="72" rx="16" fill="#7950F2" filter="url(#shadow)"/>
+
+  <!-- Block 2: Green - medium (exercise/health) -->
+  <rect x="72" y="160" width="248" height="72" rx="16" fill="#51CF66" filter="url(#shadow)"/>
+
+  <!-- Block 3: Red/Pink - medium-long (personal) -->
+  <rect x="72" y="248" width="312" height="72" rx="16" fill="#FF6B6B" filter="url(#shadow)"/>
+
+  <!-- Block 4: Blue - short (learning) -->
+  <rect x="72" y="336" width="168" height="72" rx="16" fill="#339AF0" filter="url(#shadow)"/>
+
+  <!-- Small accent dot - suggests "current time" indicator -->
+  <circle cx="424" cy="400" r="12" fill="#7950F2" opacity="0.5"/>
+  <circle cx="424" cy="400" r="6" fill="#fff" opacity="0.8"/>
+</svg>

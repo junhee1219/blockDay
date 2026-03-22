@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useActivityStore } from '../stores/useActivityStore'
 import { useEventStore } from '../stores/useEventStore'
-import { useTodayLogs } from '../hooks/useTodayLogs'
+import { useDateLogs } from '../hooks/useDateLogs'
 
 function formatHour(hour: number): string {
   const ampm = hour < 12 ? '오전' : '오후'
@@ -43,15 +43,57 @@ function formatDuration(ms: number): string {
   return `${days}일 ${remainHours}시간`
 }
 
+function formatDateLabel(date: Date): string {
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  if (date.toDateString() === today.toDateString()) return '오늘의 블록'
+  if (date.toDateString() === yesterday.toDateString()) return '어제의 블록'
+
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+  const weekday = weekdays[date.getDay()]
+  return `${month}월 ${day}일 (${weekday})`
+}
+
 export default function TimelineScreen() {
   const { activities } = useActivityStore()
   const { eventTypes } = useEventStore()
-  const { activityLogs, eventLogs } = useTodayLogs()
+
+  const [selectedDate, setSelectedDate] = useState(() => new Date())
+  const isToday = selectedDate.toDateString() === new Date().toDateString()
+
+  const { activityLogs, eventLogs } = useDateLogs(selectedDate)
+
+  const goBack = () => {
+    setSelectedDate((d) => {
+      const prev = new Date(d)
+      prev.setDate(prev.getDate() - 1)
+      return prev
+    })
+  }
+
+  const goForward = () => {
+    if (isToday) return
+    setSelectedDate((d) => {
+      const next = new Date(d)
+      next.setDate(next.getDate() + 1)
+      return next
+    })
+  }
+
+  const goToday = () => setSelectedDate(new Date())
 
   const hours = useMemo(() => {
-    const now = new Date()
-    return Array.from({ length: now.getHours() + 1 }, (_, i) => i)
-  }, [])
+    if (isToday) {
+      const now = new Date()
+      return Array.from({ length: now.getHours() + 1 }, (_, i) => i)
+    }
+    // 과거 날짜면 24시간 전체 (기록이 있는 시간대만)
+    return Array.from({ length: 24 }, (_, i) => i)
+  }, [isToday, selectedDate.toDateString()])
 
   // 활동별 총 시간 계산
   const activitySummary = useMemo(() => {
@@ -77,34 +119,118 @@ export default function TimelineScreen() {
     [activitySummary],
   )
 
+  // 이벤트별 횟수 계산
+  const eventSummary = useMemo(() => {
+    const counts = new Map<string, number>()
+
+    eventLogs.forEach((log) => {
+      counts.set(log.eventTypeId, (counts.get(log.eventTypeId) ?? 0) + 1)
+    })
+
+    return eventTypes
+      .map((e) => ({
+        eventType: e,
+        count: counts.get(e.id) ?? 0,
+      }))
+      .filter((s) => s.count > 0)
+      .sort((a, b) => b.count - a.count)
+  }, [eventTypes, eventLogs])
+
   if (activityLogs.length === 0 && eventLogs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <p className="text-[var(--color-text-secondary)] text-[20px]">
-            아직 오늘 기록이 없어요
-          </p>
-        </motion.div>
+      <div className="flex flex-col h-full">
+        {/* 날짜 네비게이션 — 빈 화면에서도 표시 */}
+        <div className="px-6 pt-14 pb-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={goBack}
+              className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <div className="text-center">
+              <h2 className="text-[28px] font-extrabold tracking-tight">
+                {formatDateLabel(selectedDate)}
+              </h2>
+            </div>
+            <button
+              onClick={goForward}
+              disabled={isToday}
+              className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform disabled:opacity-20"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+          {!isToday && (
+            <button
+              onClick={goToday}
+              className="mt-3 mx-auto block text-[14px] text-[var(--color-text-secondary)] font-semibold px-4 py-1.5 rounded-full bg-[var(--color-surface)] active:scale-[0.95] transition-transform"
+            >
+              오늘로 돌아가기
+            </button>
+          )}
+        </div>
+        <div className="flex-1 flex items-center justify-center px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <p className="text-[var(--color-text-secondary)] text-[20px]">
+              기록이 없어요
+            </p>
+          </motion.div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="h-full overflow-y-auto pb-24">
-      {/* 요약 헤더 */}
+      {/* 날짜 네비게이션 + 요약 헤더 */}
       <div className="px-6 pt-14 pb-6">
-        <motion.h2
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-[34px] font-extrabold tracking-tight mb-2"
-        >
-          오늘의 블록
-        </motion.h2>
-        <p className="text-[var(--color-text-secondary)] text-[18px]">
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={goBack}
+            className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <div className="text-center">
+            <motion.h2
+              key={selectedDate.toDateString()}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-[28px] font-extrabold tracking-tight"
+            >
+              {formatDateLabel(selectedDate)}
+            </motion.h2>
+          </div>
+          <button
+            onClick={goForward}
+            disabled={isToday}
+            className="w-11 h-11 rounded-full bg-[var(--color-surface)] flex items-center justify-center active:scale-[0.9] transition-transform disabled:opacity-20"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+        {!isToday && (
+          <button
+            onClick={goToday}
+            className="mx-auto block text-[14px] text-[var(--color-text-secondary)] font-semibold px-4 py-1.5 rounded-full bg-[var(--color-surface)] active:scale-[0.95] transition-transform mb-2"
+          >
+            오늘로 돌아가기
+          </button>
+        )}
+        <p className="text-[var(--color-text-secondary)] text-[18px] text-center">
           총 {formatDuration(totalTracked)} 기록됨
         </p>
       </div>
@@ -160,6 +286,35 @@ export default function TimelineScreen() {
         ))}
       </div>
 
+      {/* 이벤트 요약 */}
+      {eventSummary.length > 0 && (
+        <div className="px-6 space-y-3 mb-8">
+          <h3 className="text-[17px] font-bold text-[var(--color-text-secondary)] mb-5">
+            이벤트 요약
+          </h3>
+          {eventSummary.map((s, i) => (
+            <motion.div
+              key={s.eventType.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="flex items-center justify-between bg-[var(--color-surface)] rounded-2xl px-6 py-5"
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-5 h-5 rounded-full"
+                  style={{ backgroundColor: s.eventType.color }}
+                />
+                <span className="text-[19px] font-bold">{s.eventType.name}</span>
+              </div>
+              <span className="text-[var(--color-text-secondary)] text-[18px] font-semibold tabular-nums">
+                {s.count}회
+              </span>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
       {/* 타임라인 */}
       <div className="px-6">
         <h3 className="text-[17px] font-bold text-[var(--color-text-secondary)] mb-5">
@@ -168,10 +323,12 @@ export default function TimelineScreen() {
         <div className="relative">
           <div className="space-y-0">
             {hours.map((hour) => {
-              const hourStart = new Date()
-              hourStart.setHours(hour, 0, 0, 0)
-              const hourEnd = new Date()
-              hourEnd.setHours(hour + 1, 0, 0, 0)
+              const dayBase = new Date(selectedDate)
+              dayBase.setHours(0, 0, 0, 0)
+              const hourStart = new Date(dayBase)
+              hourStart.setHours(hour)
+              const hourEnd = new Date(dayBase)
+              hourEnd.setHours(hour + 1)
 
               const hourLogs = activityLogs.filter((log) => {
                 const end = log.endedAt ?? Date.now()
@@ -184,6 +341,8 @@ export default function TimelineScreen() {
                   log.occurredAt < hourEnd.getTime()
                 )
               })
+
+              if (!isToday && hourLogs.length === 0 && hourEvents.length === 0) return null
 
               return (
                 <div key={hour} className="flex gap-4 min-h-[52px]">
