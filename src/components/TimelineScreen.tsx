@@ -11,11 +11,17 @@ function formatHour(hour: number): string {
 }
 
 function formatDuration(ms: number): string {
-  const minutes = Math.floor(ms / 60000)
-  if (minutes < 60) return `${minutes}분`
-  const hours = Math.floor(minutes / 60)
-  const remainMinutes = minutes % 60
-  return remainMinutes > 0 ? `${hours}시간 ${remainMinutes}분` : `${hours}시간`
+  const totalMinutes = Math.floor(ms / 60000)
+  if (totalMinutes < 60) return `${totalMinutes}분`
+  const totalHours = Math.floor(totalMinutes / 60)
+  const remainMinutes = totalMinutes % 60
+  if (totalHours < 24) {
+    return remainMinutes > 0 ? `${totalHours}시간 ${remainMinutes}분` : `${totalHours}시간`
+  }
+  const days = Math.floor(totalHours / 24)
+  const remainHours = totalHours % 24
+  if (remainHours === 0) return `${days}일`
+  return `${days}일 ${remainHours}시간`
 }
 
 export default function TimelineScreen() {

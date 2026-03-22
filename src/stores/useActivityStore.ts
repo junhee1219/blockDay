@@ -16,6 +16,7 @@ interface ActivityState {
   switchActivity: (activityId: string) => Promise<void>
   stopTracking: () => Promise<void>
   loadCurrentLog: () => Promise<void>
+  syncOnResume: () => Promise<void>
 }
 
 export const useActivityStore = create<ActivityState>((set, get) => ({
@@ -97,4 +98,31 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
       set({ currentLog: lastLog, isTracking: true })
     }
   },
+
+  // 백그라운드에서 복귀할 때 DB에서 최신 상태 동기화
+  syncOnResume: async () => {
+    const lastLog = await db.activityLogs
+      .orderBy('startedAt')
+      .reverse()
+      .first()
+
+    if (lastLog && !lastLog.endedAt) {
+      set({ currentLog: lastLog, isTracking: true })
+    } else {
+      set({ currentLog: null, isTracking: false })
+    }
+  },
 }))
+
+// 백그라운드 복귀 시 자동 동기화
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      useActivityStore.getState().syncOnResume()
+    }
+  })
+
+  window.addEventListener('focus', () => {
+    useActivityStore.getState().syncOnResume()
+  })
+}
